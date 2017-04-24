@@ -345,3 +345,77 @@ func TestKeepAliveConfig(t *testing.T) {
 	assert.Equal(t, 0, base.KeepAliveInterval())
 	assert.Equal(t, 0, base.MaxIdleConnectionsPerHost())
 }
+
+func TestInitDimensionalCounters(t *testing.T) {
+	b := new(BaseHandler)
+
+	b.setDimensionalCounters("testDimension")
+	assert.Equal(t, "testDimension", b.metricDimension)
+	assert.NotNil(t, b.metricsSentByDimension)
+}
+
+func TestInternalMetricsByDimension(t *testing.T) {
+	base := BaseHandler{}
+	base.totalEmissions = 10
+	base.metricsDropped = 100
+	base.metricsSent = 2
+	base.interval = 4
+	base.metricDimension = "test"
+	base.metricsSentByDimension = map[string]uint64{
+		"test service A": 10,
+		"test service B": 20,
+	}
+
+	timing := emissionTiming{time.Now(), 5 * time.Second, 0}
+	base.emissionTimes.PushBack(timing)
+	timing = emissionTiming{time.Now(), 10 * time.Second, 0}
+	base.emissionTimes.PushBack(timing)
+	timing = emissionTiming{time.Now(), 6 * time.Second, 0}
+	base.emissionTimes.PushBack(timing)
+
+	results := base.InternalMetrics()
+	expected := metric.InternalMetrics{
+		Counters: map[string]float64{
+			"metricsDropped":              100,
+			"metricsSent":                 2,
+			"totalEmissions":              10,
+			"metricsSentBytest_service_A": 10,
+			"metricsSentBytest_service_B": 20,
+		},
+		Gauges: map[string]float64{
+			"averageEmissionTiming": 7,
+			"emissionsInWindow":     3,
+			"intervalLength":        4,
+			"maxEmissionTiming":     10,
+		},
+	}
+	assert.Equal(t, expected, results)
+}
+
+func TestEmissionAndRecordWithDimensions(t *testing.T) {
+	emitCalled := false
+
+	callbackChannel := make(chan emissionTiming)
+	emitFunc := func([]metric.Metric) bool {
+		emitCalled = true
+		return true
+	}
+
+	metrics := []metric.Metric{metric.New("example1"), metric.New("example2")}
+	metrics[0].AddDimension("service", "test service A")
+	metrics[1].AddDimension("service", "test service B")
+
+	base := BaseHandler{}
+	base.setDimensionalCounters("service")
+	base.log = l.WithField("testing", "basehandler_emit")
+	go base.emitAndTime(metrics, emitFunc, callbackChannel)
+
+	timing := <-callbackChannel
+	assert.Equal(t, 2, timing.metricsSent)
+	assert.True(t, emitCalled)
+	time.Sleep(time.Second * 1)
+	mu.Lock()
+	assert.Equal(t, 2, len(base.metricsSentByDimension))
+	mu.Unlock()
+	callbackChannel = nil
+}
