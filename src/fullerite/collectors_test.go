@@ -206,3 +206,42 @@ func TestCollectorBlacklist(t *testing.T) {
 
 	assert.Equal(t, uint64(1), collectorMetrics["Test"])
 }
+
+func TestReadFromCollectorWithAggregation(t *testing.T) {
+	logrus.SetLevel(logrus.ErrorLevel)
+	c := make(map[string]interface{})
+	c["interval"] = 1
+	collector := collector.New("Test")
+	collector.SetInterval(1)
+	collector.Configure(c)
+	collector.SetInternalMetricsDimension("service")
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	collectorStatChannel := make(chan metric.CollectorEmission)
+	go func() {
+		defer wg.Done()
+		collector.Channel() <- metric.New("hello")
+		time.Sleep(time.Duration(2) * time.Second)
+		m2 := metric.New("world")
+		m2.AddDimension("service", "test_service_A")
+		collector.Channel() <- m2
+		time.Sleep(time.Duration(2) * time.Second)
+		m3 := metric.New("world")
+		m3.AddDimension("service", "test_service_B")
+		collector.Channel() <- m3
+		close(collector.Channel())
+	}()
+	collectorMetrics := map[string]uint64{}
+	go func() {
+		defer wg.Done()
+		for collectorMetric := range collectorStatChannel {
+			collectorMetrics[collectorMetric.Name] = collectorMetric.EmissionCount
+		}
+	}()
+	readFromCollector(collector, []handler.Handler{}, collectorStatChannel)
+	wg.Wait()
+	assert.Equal(t, uint64(3), collectorMetrics["Test"])
+	assert.Equal(t, uint64(1), collectorMetrics["Test_by_test_service_A"])
+	assert.Equal(t, uint64(1), collectorMetrics["Test_by_test_service_B"])
+}

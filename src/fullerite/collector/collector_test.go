@@ -30,6 +30,9 @@ func TestNew(t *testing.T) {
 
 		c.SetInterval(999)
 		assert.Equal(t, 999, c.Interval(), "should have set the interval")
+
+		c.SetInternalMetricsDimension("service")
+		assert.Equal(t, "service", c.InternalMetricsDimension(), "should have set aggregation dimension")
 	}
 }
 

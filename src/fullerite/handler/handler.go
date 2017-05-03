@@ -351,11 +351,9 @@ func (base *BaseHandler) InternalMetrics() metric.InternalMetrics {
 		"metricsSent":    float64(base.metricsSent),
 	}
 
-	if base.metricDimension != "" {
-		for dimensionName, count := range base.metricsSentByDimension {
-			var metricsSentBy = "metricsSentBy" + strings.Replace(dimensionName, " ", "_", -1)
-			counters[metricsSentBy] = float64(count)
-		}
+	for dimensionName, count := range base.metricsSentByDimension {
+		var metricsSentBy = "metricsSentBy" + strings.Replace(dimensionName, " ", "_", -1)
+		counters[metricsSentBy] = float64(count)
 	}
 
 	gauges := map[string]float64{
@@ -552,7 +550,9 @@ func (base *BaseHandler) emitAndTime(
 
 	if result {
 		atomic.AddUint64(&base.metricsSent, uint64(numMetrics))
-		go base.countByDimension(metrics)
+		if base.metricDimension != "" {
+			go base.countByDimension(metrics)
+		}
 	} else {
 		atomic.AddUint64(&base.metricsDropped, uint64(numMetrics))
 	}
@@ -562,11 +562,10 @@ func (base *BaseHandler) countByDimension(
 	metrics []metric.Metric,
 ) {
 	mu.Lock()
-	for i := range metrics {
-		dimensionName, ok := metrics[i].GetDimensionValue(base.metricDimension)
-		if ok {
-			base.metricsSentByDimension[dimensionName] += 1
+	defer mu.Unlock()
+	for _, m := range metrics {
+		if dimensionName, ok := m.GetDimensionValue(base.metricDimension); ok {
+			base.metricsSentByDimension[dimensionName]++
 		}
 	}
-	mu.Unlock()
 }

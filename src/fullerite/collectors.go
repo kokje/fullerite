@@ -8,6 +8,7 @@ import (
 
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -108,6 +109,13 @@ func readFromCollector(collector collector.Collector,
 			continue
 		}
 		emissionCounter[c]++
+		if aggregationDimension := collector.InternalMetricsDimension(); aggregationDimension != "" {
+			if val, ok := m.GetDimensionValue(aggregationDimension); ok {
+				metricName := c + "_by_" + strings.Replace(val, " ", "_", -1)
+				emissionCounter[metricName]++
+			}
+		}
+
 		// collectorStatChans is an optional parameter. In case of ad-hoc collector
 		// this parameter is not supplied at all. Using variadic arguments is pretty much
 		// only way of doing this in go.
@@ -130,6 +138,7 @@ func readFromCollector(collector collector.Collector,
 			}
 		}
 	}
+
 	// Closing the stat channel after collector loop finishes
 	for _, statChannel := range collectorStatChans {
 		close(statChannel)

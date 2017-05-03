@@ -34,6 +34,8 @@ type Collector interface {
 	SetPrefix(string)
 	Blacklist() []string
 	SetBlacklist([]string)
+	InternalMetricsDimension() string
+	SetInternalMetricsDimension(string)
 }
 
 var collectorConstructs map[string]func(chan metric.Metric, int, *l.Entry) Collector
@@ -73,13 +75,14 @@ func New(name string) Collector {
 
 type baseCollector struct {
 	// fulfill most of the rote parts of the collector interface
-	channel       chan metric.Metric
-	name          string
-	interval      int
-	collectorType string
-	canonicalName string
-	prefix        string
-	blacklist     []string
+	channel              chan metric.Metric
+	name                 string
+	interval             int
+	collectorType        string
+	canonicalName        string
+	prefix               string
+	blacklist            []string
+	aggregationDimension string
 
 	// intentionally exported
 	log *l.Entry
@@ -127,6 +130,11 @@ func (col *baseCollector) SetBlacklist(blacklist []string) {
 	col.blacklist = blacklist
 }
 
+// SetInternalMetricsDimension : set optional metrics aggregation dimension
+func (col *baseCollector) SetInternalMetricsDimension(internalMetricsDimension string) {
+	col.aggregationDimension = internalMetricsDimension
+}
+
 // CanonicalName : collector canonical name
 func (col *baseCollector) CanonicalName() string {
 	return col.canonicalName
@@ -165,4 +173,9 @@ func (col baseCollector) String() string {
 // Blacklist returns the list of metrics to be blacklisted for this collector
 func (col *baseCollector) Blacklist() []string {
 	return col.blacklist
+}
+
+// Returns the dimension over which internal metrics are aggregated
+func (col *baseCollector) InternalMetricsDimension() string {
+	return col.aggregationDimension
 }
