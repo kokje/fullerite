@@ -34,8 +34,8 @@ type Collector interface {
 	SetPrefix(string)
 	Blacklist() []string
 	SetBlacklist([]string)
-	InternalMetricsDimension() string
-	SetInternalMetricsDimension(string)
+	MetricsAttributionDimension() string
+	SetMetricsAttributionDimension(string)
 }
 
 var collectorConstructs map[string]func(chan metric.Metric, int, *l.Entry) Collector
@@ -82,7 +82,7 @@ type baseCollector struct {
 	canonicalName        string
 	prefix               string
 	blacklist            []string
-	aggregationDimension string
+	attributionDimension string
 
 	// intentionally exported
 	log *l.Entry
@@ -130,9 +130,9 @@ func (col *baseCollector) SetBlacklist(blacklist []string) {
 	col.blacklist = blacklist
 }
 
-// SetInternalMetricsDimension : set optional metrics aggregation dimension
-func (col *baseCollector) SetInternalMetricsDimension(internalMetricsDimension string) {
-	col.aggregationDimension = internalMetricsDimension
+// SetMetricsAttributionDimension : set optional metrics attribution dimension
+func (col *baseCollector) SetMetricsAttributionDimension(attributionDimension string) {
+	col.attributionDimension = attributionDimension
 }
 
 // CanonicalName : collector canonical name
@@ -175,7 +175,7 @@ func (col *baseCollector) Blacklist() []string {
 	return col.blacklist
 }
 
-// Returns the dimension over which internal metrics are aggregated
-func (col *baseCollector) InternalMetricsDimension() string {
-	return col.aggregationDimension
+// Returns the dimension for metrics attribution
+func (col *baseCollector) MetricsAttributionDimension() string {
+	return col.attributionDimension
 }

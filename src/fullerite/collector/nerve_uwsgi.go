@@ -66,8 +66,8 @@ func (n *nerveUWSGICollector) Configure(configMap map[string]interface{}) {
 		n.timeout = config.GetAsInt(val, 2)
 	}
 
-	if val, exists := configMap["dimensional_counter"]; exists {
-		n.SetInternalMetricsDimension(val.(string))
+	if val, exists := configMap["attribution_dimension"]; exists {
+		n.SetMetricsAttributionDimension(val.(string))
 	}
 
 	n.configureCommonParams(configMap)

@@ -109,8 +109,8 @@ func readFromCollector(collector collector.Collector,
 			continue
 		}
 		emissionCounter[c]++
-		if aggregationDimension := collector.InternalMetricsDimension(); aggregationDimension != "" {
-			if val, ok := m.GetDimensionValue(aggregationDimension); ok {
+		if attributionDimension := collector.MetricsAttributionDimension(); attributionDimension != "" {
+			if val, ok := m.GetDimensionValue(attributionDimension); ok {
 				metricName := c + "_by_" + strings.Replace(val, " ", "_", -1)
 				emissionCounter[metricName]++
 			}

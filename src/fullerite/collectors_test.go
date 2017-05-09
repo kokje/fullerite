@@ -214,7 +214,7 @@ func TestReadFromCollectorWithAggregation(t *testing.T) {
 	collector := collector.New("Test")
 	collector.SetInterval(1)
 	collector.Configure(c)
-	collector.SetInternalMetricsDimension("service")
+	collector.SetMetricsAttributionDimension("service")
 
 	var wg sync.WaitGroup
 	wg.Add(2)
