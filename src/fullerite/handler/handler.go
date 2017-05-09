@@ -135,12 +135,10 @@ type BaseHandler struct {
 	keepAliveInterval         int
 
 	// for tracking
-	emissionTimes          list.List
-	totalEmissions         uint64
-	metricsSent            uint64
-	metricsDropped         uint64
-	metricDimension        string
-	metricsSentByDimension map[string]uint64
+	emissionTimes  list.List
+	totalEmissions uint64
+	metricsSent    uint64
+	metricsDropped uint64
 
 	// List of blacklisted collectors
 	// the handler won't accept metrics from
@@ -167,7 +165,7 @@ func (base *BaseHandler) SetPrefix(prefix string) {
 	base.prefix = prefix
 }
 
-// SetDefaultDimensions : set the default dimensions
+// SetDefaultDimensions : set the defautl dimensions
 func (base *BaseHandler) SetDefaultDimensions(defaults map[string]string) {
 	base.defaultDimensions = make(map[string]string)
 	for name, value := range defaults {
@@ -271,12 +269,6 @@ func (base *BaseHandler) MaxIdleConnectionsPerHost() int {
 	return base.maxIdleConnectionsPerHost
 }
 
-// SetDimensionalCounters : enable internal metrics by dimension
-func (base *BaseHandler) setDimensionalCounters(dimension string) {
-	base.metricDimension = dimension
-	base.metricsSentByDimension = make(map[string]uint64)
-}
-
 // InitListeners - initiate listener channels for collectors
 func (base *BaseHandler) InitListeners(globalConfig config.Config) {
 	collectorEndpoints := make(map[string]CollectorEnd)
@@ -350,12 +342,6 @@ func (base *BaseHandler) InternalMetrics() metric.InternalMetrics {
 		"metricsDropped": float64(base.metricsDropped),
 		"metricsSent":    float64(base.metricsSent),
 	}
-
-	for dimensionName, count := range base.metricsSentByDimension {
-		var metricsSentBy = "metricsSentBy" + strings.Replace(dimensionName, " ", "_", -1)
-		counters[metricsSentBy] = float64(count)
-	}
-
 	gauges := map[string]float64{
 		"intervalLength":    float64(base.interval),
 		"emissionsInWindow": float64(base.emissionTimes.Len()),
@@ -550,22 +536,7 @@ func (base *BaseHandler) emitAndTime(
 
 	if result {
 		atomic.AddUint64(&base.metricsSent, uint64(numMetrics))
-		if base.metricDimension != "" {
-			go base.countByDimension(metrics)
-		}
 	} else {
 		atomic.AddUint64(&base.metricsDropped, uint64(numMetrics))
-	}
-}
-
-func (base *BaseHandler) countByDimension(
-	metrics []metric.Metric,
-) {
-	mu.Lock()
-	defer mu.Unlock()
-	for _, m := range metrics {
-		if dimensionName, ok := m.GetDimensionValue(base.metricDimension); ok {
-			base.metricsSentByDimension[dimensionName]++
-		}
 	}
 }

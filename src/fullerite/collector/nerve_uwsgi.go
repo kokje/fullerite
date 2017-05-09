@@ -47,7 +47,6 @@ func newNerveUWSGI(channel chan metric.Metric, initialInterval int, log *l.Entry
 	col.configFilePath = "/etc/nerve/nerve.conf.json"
 	col.queryPath = "status/metrics"
 	col.timeout = 2
-	col.SetInternalMetricsDimension("service")
 
 	return col
 }
@@ -65,6 +64,10 @@ func (n *nerveUWSGICollector) Configure(configMap map[string]interface{}) {
 
 	if val, exists := configMap["http_timeout"]; exists {
 		n.timeout = config.GetAsInt(val, 2)
+	}
+
+	if val, exists := configMap["dimensional_counter"]; exists {
+		n.SetInternalMetricsDimension(val.(string))
 	}
 
 	n.configureCommonParams(configMap)
